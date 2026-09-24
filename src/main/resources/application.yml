@@ -1,0 +1,22 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+  profiles:
+    # "native" = serve config from the file system instead of a git repository
+    active: native
+  cloud:
+    config:
+      server:
+        native:
+          # Relative to the working directory. Override with CONFIG_REPO_LOCATION,
+          # e.g. CONFIG_REPO_LOCATION=file:/opt/config-repo/
+          search-locations: ${CONFIG_REPO_LOCATION:file:./config-repo/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

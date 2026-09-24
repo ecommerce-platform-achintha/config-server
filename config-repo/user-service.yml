@@ -1,0 +1,16 @@
+# Configuration for the "user-service" application.
+#
+# File naming pattern (native backend):
+#   {application}.yml            -> defaults for that service
+#   {application}-{profile}.yml  -> profile-specific overrides (e.g. user-service-dev.yml)
+#   application.yml              -> shared defaults for ALL services
+#
+# A client with spring.application.name=user-service fetches this via:
+#   GET http://localhost:8888/user-service/default
+
+server:
+  port: 8081
+
+user-service:
+  greeting: Hello from the config server!
+  max-page-size: 50
