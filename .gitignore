@@ -1,3 +1,11 @@
 target/
 .idea/
 *.iml
+
+# Keys and local secrets: never commit (the native backend would also serve anything under config-repo/)
+keys/
+*.pem
+*.key
+*.p12
+*.jks
+.env

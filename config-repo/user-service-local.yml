@@ -1,0 +1,18 @@
+# "local" profile overrides for user-service (developer machines only).
+#
+# Generate a dev key pair once, in the user-service project root (README: "Local RSA keys"):
+#
+#   mkdir -p keys
+#   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out keys/jwt-private.pem
+#   openssl pkey -in keys/jwt-private.pem -pubout -out keys/jwt-public.pem
+#
+# keys/ must be git-ignored (and docker-ignored) in user-service. Never commit a key, not even a dev one.
+# JWT_PRIVATE_KEY / JWT_PUBLIC_KEY still win when set. Relative paths resolve against user-service's working
+# directory.
+
+security:
+  jwt:
+    signing:
+      private-key: ${JWT_PRIVATE_KEY:file:./keys/jwt-private.pem}
+      public-key: ${JWT_PUBLIC_KEY:file:./keys/jwt-public.pem}
+      key-id: ${JWT_KEY_ID:user-service-local-dev}

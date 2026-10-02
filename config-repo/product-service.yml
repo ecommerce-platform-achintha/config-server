@@ -1,0 +1,25 @@
+# Configuration for the "product-service" application.
+#
+# Server port, datasource and the rest of the local defaults stay in product-service's own application.yml.
+# security.jwt.* (JWKS, issuer, audience, clock skew) and app.kafka.topics.* come from application.yml.
+#
+# A client with spring.application.name=product-service fetches this via:
+#   GET http://localhost:8888/product-service/default
+
+security:
+  internal:
+    # client-id (product-service) comes from application.yml
+    client-secret: ${SERVICE_CLIENT_SECRET_PRODUCT:${local-dev.service-client-secret}}
+
+app:
+  scheduling:
+    shedlock:
+      enabled: ${SHEDLOCK_ENABLED:true}
+      default-lock-at-most-for: PT10M
+    # Safety net: release HELD reservations still held "grace" after their expiresAt (order-service is authoritative)
+    reservation-cleanup:
+      interval: PT5M
+      grace: PT1H
+  outbox:
+    relay-interval: PT1S
+    batch-size: 100

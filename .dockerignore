@@ -2,3 +2,9 @@ target/
 .idea/
 .git/
 *.iml
+keys/
+*.pem
+*.key
+*.p12
+*.jks
+.env

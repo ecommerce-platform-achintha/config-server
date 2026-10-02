@@ -19,4 +19,12 @@ management:
   endpoints:
     web:
       exposure:
+        # Only health and info, in every profile. env, configprops, refresh, heapdump etc. stay unexposed so
+        # nothing in this server's environment can be read over HTTP.
         include: health,info
+  endpoint:
+    # Defence in depth, should env/configprops ever be exposed: values are always masked
+    env:
+      show-values: never
+    configprops:
+      show-values: never

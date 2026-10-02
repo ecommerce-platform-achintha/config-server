@@ -1,0 +1,31 @@
+# Configuration for the "order-service" application.
+#
+# Server port, datasource, Feign/Resilience4j and the rest of the local defaults stay in order-service's own
+# application.yml. security.jwt.* (JWKS, issuer, audience, clock skew) and app.kafka.topics.* come from
+# application.yml.
+#
+# A client with spring.application.name=order-service fetches this via:
+#   GET http://localhost:8888/order-service/default
+
+security:
+  internal:
+    # client-id (order-service) comes from application.yml
+    client-secret: ${SERVICE_CLIENT_SECRET_ORDER:${local-dev.service-client-secret}}
+
+order-service:
+  kafka:
+    # Existing property read by order-service's publisher; kept in step with the shared topic name
+    order-events-topic: ${app.kafka.topics.order-events}
+
+app:
+  scheduling:
+    shedlock:
+      enabled: ${SHEDLOCK_ENABLED:true}
+      default-lock-at-most-for: PT10M
+    # OrderDeadlineScheduler: picks due orders (FOR UPDATE SKIP LOCKED) in batches
+    order-deadlines:
+      interval: PT1M
+      batch-size: 100
+  outbox:
+    relay-interval: PT1S
+    batch-size: 100

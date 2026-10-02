@@ -1,0 +1,82 @@
+# Configuration for the "api-gateway" application.
+#
+# A client with spring.application.name=api-gateway fetches this via:
+#   GET http://localhost:8888/api-gateway/default
+#
+# Tokens are RS256, verified against user-service's JWKS. There is no shared signing secret any more.
+# security.jwt.{issuer,audience,jwks-uri,clock-skew-seconds} and security.cors.allowed-origins come from
+# application.yml; the gateway-specific settings below refer to them so there is one source of truth.
+
+api-gateway:
+  auth:
+    jwks-uri: ${security.jwt.jwks-uri}
+    issuer: ${security.jwt.issuer}
+    audience: ${security.jwt.audience}
+    clock-skew-seconds: ${security.jwt.clock-skew-seconds}
+    # Requests allowed without a token (docs/marketplace-design.md 3.4, gateway prompt task 3).
+    # method: HTTP method; path: Spring path pattern. Everything else needs "Authorization: Bearer <token>".
+    # This list replaces the gateway's local one as a whole.
+    public-routes:
+      - method: POST
+        path: /api/auth/login
+      - method: POST
+        path: /api/auth/refresh
+      - method: POST
+        path: /api/users/register/customer
+      - method: POST
+        path: /api/users/register/merchant
+      - method: GET
+        path: /.well-known/jwks.json
+      - method: GET
+        path: /api/public/**
+
+  # Per-client limits (key = authenticated user id, else client IP), not per route. The first tier whose
+  # routes match wins; requests matching no tier use "default". Over the limit -> 429 with Retry-After.
+  # Buckets are in memory per gateway instance; several instances need a shared (Redis) limiter.
+  rate-limit:
+    # Proxies whose X-Forwarded-For is trusted (comma-separated IPs/CIDRs). Empty: use the TCP peer address.
+    trusted-proxies: ${GATEWAY_TRUSTED_PROXIES:}
+    tiers:
+      # Strict, keyed by IP: credential stuffing and sign-up abuse
+      auth:
+        capacity: 10
+        refill-period: PT1M
+        key: ip
+        routes:
+          - method: POST
+            path: /api/auth/login
+          - method: POST
+            path: /api/auth/refresh
+          - method: POST
+            path: /api/users/register/**
+      # Moderate: checkout and payment submission
+      sensitive:
+        capacity: 20
+        refill-period: PT1M
+        key: user-or-ip
+        routes:
+          - method: POST
+            path: /api/customer/checkout
+          - method: POST
+            path: /api/customer/orders/*/payments/**
+      # Generous: anonymous browsing and search
+      public:
+        capacity: 300
+        refill-period: PT1M
+        key: user-or-ip
+        routes:
+          - method: GET
+            path: /api/public/**
+      default:
+        capacity: 120
+        refill-period: PT1M
+        key: user-or-ip
+
+security:
+  cors:
+    # allowed-origins: from application.yml (CORS_ALLOWED_ORIGINS). Credentials only with those exact origins.
+    allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+    allowed-headers: Authorization,Content-Type,Idempotency-Key
+    exposed-headers: Retry-After,X-RateLimit-Remaining
+    allow-credentials: true
+    max-age: PT1H

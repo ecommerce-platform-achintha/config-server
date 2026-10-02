@@ -2,7 +2,7 @@
 #
 # File naming pattern (native backend):
 #   {application}.yml            -> defaults for that service
-#   {application}-{profile}.yml  -> profile-specific overrides (e.g. user-service-dev.yml)
+#   {application}-{profile}.yml  -> profile-specific overrides (e.g. user-service-local.yml)
 #   application.yml              -> shared defaults for ALL services
 #
 # A client with spring.application.name=user-service fetches this via:
@@ -14,3 +14,60 @@ server:
 user-service:
   greeting: Hello from the config server!
   max-page-size: 50
+
+security:
+  jwt:
+    # issuer, audience, jwks-uri and clock-skew-seconds come from application.yml.
+    signing:
+      # RS256 signing key pair (docs/marketplace-design.md, section 3.3). The private key lives ONLY in
+      # user-service. Each value is either the PEM text itself ("-----BEGIN ...") or a Spring resource
+      # location (file:/run/secrets/jwt-private.pem). No default: without them user-service must not start.
+      # In the local profile, user-service-local.yml points at a git-ignored keys/ folder (see README).
+      private-key: ${JWT_PRIVATE_KEY}
+      public-key: ${JWT_PUBLIC_KEY}
+      # "kid" header of issued tokens and of the JWKS entry. Change it when rotating keys.
+      key-id: ${JWT_KEY_ID:user-service-rs256-1}
+  internal:
+    # Clients allowed to call POST /internal/auth/service-token. Each secret must equal the one the calling
+    # service is given (same env var). Outside the local profile the env vars are mandatory.
+    clients:
+      - client-id: store-service
+        client-secret: ${SERVICE_CLIENT_SECRET_STORE:${local-dev.service-client-secret}}
+      - client-id: product-service
+        client-secret: ${SERVICE_CLIENT_SECRET_PRODUCT:${local-dev.service-client-secret}}
+      - client-id: order-service
+        client-secret: ${SERVICE_CLIENT_SECRET_ORDER:${local-dev.service-client-secret}}
+    # Lifetime of issued ROLE_SERVICE tokens
+    service-token-minutes: 5
+
+# Startup defaults of the platform settings with the same keys (docs/marketplace-design.md, section 7).
+auth:
+  access-token-minutes: 10
+  refresh-days: 14
+  # Lock the account / IP for lockout-minutes after max-failed-logins consecutive failures
+  max-failed-logins: 5
+  lockout-minutes: 15
+
+timers:
+  # A banned merchant keeps working (no new orders) for this many days before the ban is announced (D4)
+  ban-grace-days: 14
+
+bootstrap:
+  super-admin:
+    # Created once, on an empty database, with mustChangePassword=true. There are no defaults: the empty
+    # fallback only means "not set", and user-service must refuse to start on an empty database without them.
+    # Set them in the environment (never commit them); the password is never logged.
+    email: ${SUPER_ADMIN_EMAIL:}
+    initial-password: ${SUPER_ADMIN_INITIAL_PASSWORD:}
+
+app:
+  scheduling:
+    shedlock:
+      enabled: ${SHEDLOCK_ENABLED:true}
+      default-lock-at-most-for: PT10M
+    # BAN_GRACE merchants past banEffectiveAt become BANNED
+    ban-enforcement:
+      interval: PT5M
+  outbox:
+    relay-interval: PT1S
+    batch-size: 100

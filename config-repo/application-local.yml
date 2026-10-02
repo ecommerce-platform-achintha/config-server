@@ -1,0 +1,20 @@
+# Shared overrides for the "local" profile only (developer machines). Served to a service started with
+# spring.profiles.active=local (e.g. SPRING_PROFILES_ACTIVE=local mvn spring-boot:run).
+#
+# This is the ONLY place the local-dev placeholder secret is defined. Service files reference it as the fallback
+# of their SERVICE_CLIENT_SECRET_<NAME> env var, so:
+#   - local profile, env var unset  -> the placeholder below is used;
+#   - any other profile, env var unset -> the property cannot be resolved and the service must refuse to start.
+# Services must also refuse to start outside "local" if a secret still starts with "LOCAL-DEV-ONLY" (README).
+
+local-dev:
+  # LOCAL-DEV-ONLY placeholder. Not a real secret; never valid outside the local profile.
+  service-client-secret: LOCAL-DEV-ONLY-service-client-secret-do-not-use
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Extra diagnostics on a developer machine. Values stay masked (show-values: never in application.yml).
+        # "gateway" can add/refresh routes at runtime, so it is never exposed outside local.
+        include: health,info,env,configprops,metrics,circuitbreakers,circuitbreakerevents,gateway

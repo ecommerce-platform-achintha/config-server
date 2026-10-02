@@ -1,0 +1,53 @@
+# Configuration for the "store-service" application (new; docs/marketplace-design.md, section 4).
+#
+# A client with spring.application.name=store-service fetches this via:
+#   GET http://localhost:8888/store-service/default
+
+server:
+  port: 8084
+
+spring:
+  datasource:
+    # Defaults match store-service's docker-compose.yml (storedb on host port 5435), next to
+    # user-service (5432), product-service (5433) and order-service (5434).
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5435}/${DB_NAME:storedb}
+    username: ${DB_USERNAME:storeservice}
+    # Local docker-compose default, same pattern as the other services. Set DB_PASSWORD everywhere else.
+    password: ${DB_PASSWORD:storeservice}
+  jpa:
+    # Schema is owned by Flyway (src/main/resources/db/migration); Hibernate only checks it
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  data:
+    web:
+      pageable:
+        max-page-size: 50
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+security:
+  internal:
+    # client-id (store-service) comes from application.yml
+    client-secret: ${SERVICE_CLIENT_SECRET_STORE:${local-dev.service-client-secret}}
+
+app:
+  scheduling:
+    shedlock:
+      enabled: ${SHEDLOCK_ENABLED:true}
+      default-lock-at-most-for: PT10M
+  outbox:
+    relay-interval: PT1S
+    batch-size: 100
+  settings:
+    # In-memory cache of platform settings; SettingsChanged events invalidate it earlier
+    cache-ttl: PT60S

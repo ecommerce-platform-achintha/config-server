@@ -1,0 +1,50 @@
+# Shared defaults served to EVERY client of the Config Server.
+#
+# Precedence (highest first): {service}-{profile}.yml > application-{profile}.yml > {service}.yml > application.yml,
+# so any service file can override what is set here.
+#
+# Every value below is either harmless to commit or an ${ENV_VAR:safe-local-default} placeholder; the placeholder
+# is resolved by the client service, from its own environment. Real secrets are never committed (see README).
+
+security:
+  jwt:
+    # Access tokens are RS256, signed by user-service only (docs/marketplace-design.md, section 3.3).
+    # Every service (and the gateway) validates them itself against user-service's JWKS.
+    issuer: ${JWT_ISSUER:user-service}
+    audience: ${JWT_AUDIENCE:marketplace}
+    jwks-uri: ${JWKS_URI:http://localhost:8081/.well-known/jwks.json}
+    # Tolerance for exp / nbf / iat checks
+    clock-skew-seconds: ${JWT_CLOCK_SKEW_SECONDS:30}
+  cors:
+    # Comma-separated, exact origins (no wildcards). Used by api-gateway only: CORS is answered at the gateway.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+  internal:
+    # Client credentials for POST /internal/auth/service-token (service-to-service calls, ROLE_SERVICE).
+    # The id is the service name; each service file sets its own client-secret from SERVICE_CLIENT_SECRET_<NAME>.
+    client-id: ${spring.application.name}
+
+app:
+  # Holiday handling and display. Storage and JSON stay UTC.
+  timezone: ${APP_TIMEZONE:Asia/Colombo}
+  kafka:
+    topics:
+      user-events: ${KAFKA_TOPIC_USER_EVENTS:user-events}
+      store-events: ${KAFKA_TOPIC_STORE_EVENTS:store-events}
+      product-events: ${KAFKA_TOPIC_PRODUCT_EVENTS:product-events}
+      order-events: ${KAFKA_TOPIC_ORDER_EVENTS:order-events}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Outside the local profile, only health and info. A service file may add non-sensitive endpoints
+        # (e.g. circuitbreakers) but never env, configprops, heapdump, threaddump, loggers or beans.
+        include: health,info
+  endpoint:
+    # Defence in depth, should env/configprops ever be exposed: keys are listed, values always masked.
+    env:
+      show-values: never
+    configprops:
+      show-values: never
+    health:
+      show-details: never
